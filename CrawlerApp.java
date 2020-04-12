@@ -15,9 +15,8 @@ import java.util.*;
 import org.htmlparser.beans.StringBean;
 import org.htmlparser.util.ParserException;
 import org.htmlparser.beans.LinkBean;
-
-
-
+import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
 
 
 class UrlData {
@@ -60,7 +59,6 @@ class UrlData {
 	}
 }
 
-
 class Crawler {
 	private String url;
 
@@ -92,7 +90,6 @@ class Crawler {
 				result.put(tempResult.get(i), currentValue);
 			}
 		}
-
 		return result;
 	}
 
@@ -124,7 +121,7 @@ class Crawler {
 			}
 			date = LocalDateTime.parse(lastModifiedDate, DateTimeFormatter.RFC_1123_DATE_TIME);
 		}
-
+		connection.disconnect();
 		return date;
 	}
 
@@ -169,6 +166,9 @@ public class CrawlerApp {
 	static public Vector<String> urlList;
 
 	public static void main (String[] args) {
+		String dbPath = "/home/ernest/Documents/COMP4321/Phase1/db";
+		RocksDB.loadLibrary();
+
 		try {
 			System.out.println("Number of pages to be crawled: " + (CrawlerApp.MAX_NUM_PAGES + 1));
 
@@ -192,6 +192,25 @@ public class CrawlerApp {
 			for (int i = 0; i < CrawlerApp.mapList.size(); i++) {
 				CrawlerApp.mapList.get(i).print();
 			}
+
+			System.out.println("End of crawling");
+
+			try {
+				Options options = new Options();
+				options.setCreateIfMissing(true);
+
+				RocksDB db;
+				db = RocksDB.open(options, dbPath);
+				System.out.println("Opened DB");
+
+
+
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
+
+
 		}
 		catch (Exception e) {
 			e.printStackTrace ();
