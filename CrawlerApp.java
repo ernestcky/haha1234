@@ -17,6 +17,8 @@ import org.htmlparser.util.ParserException;
 import org.htmlparser.beans.LinkBean;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 
 class UrlData {
@@ -146,7 +148,8 @@ class Crawler {
 
 			Vector<String> links = this.extractLinks();
 			for(int i = 0; i < links.size(); i++) {
-				CrawlerApp.urlList.add(links.get(i));
+				if(CrawlerApp.urlList.contains(links.get(i)) == false)
+					CrawlerApp.urlList.add(links.get(i));
 			}
 
 			CrawlerApp.mapList.add(new UrlData(url, date, size, words, links));
@@ -156,7 +159,6 @@ class Crawler {
 			ex.printStackTrace();
 		}
 	}
-
 }
 
 public class CrawlerApp {
@@ -165,22 +167,42 @@ public class CrawlerApp {
 	static public Vector<UrlData> mapList;
 	static public Vector<String> urlList;
 
+	private RocksDB db;
+	private Options options;
+
+	CrawlerApp(String dbPath) throws RocksDBException {
+		CrawlerApp.mapList = new Vector<UrlData>();
+		CrawlerApp.urlList = new Vector<String>();
+		this.options = new Options();
+		this.options.setCreateIfMissing(true);
+		// creat and open the database
+		this.db = RocksDB.open(options, dbPath);
+	}
+
+	public void printAll() throws RocksDBException {
+		RocksIterator iter = db.newIterator();
+
+		for(iter.seekToFirst(); iter.isValid(); iter.next()) {
+			System.out.println(new String(iter.key()) + "=" + new String(iter.value()));
+		}
+	}
+
 	public static void main (String[] args) {
-		String dbPath = "/home/ernest/Documents/COMP4321/Phase1/db";
-		RocksDB.loadLibrary();
 
 		try {
+			String dbPath = "/home/ernest/Documents/COMP4321/Phase1/db";
+
+			CrawlerApp crawlerApp = new CrawlerApp(dbPath);
+
 			System.out.println("Number of pages to be crawled: " + (CrawlerApp.MAX_NUM_PAGES + 1));
 
-			CrawlerApp.mapList = new Vector<UrlData>();
-			CrawlerApp.urlList = new Vector<String>();
 			Crawler initCrawler = new Crawler(args[0]);
 
 			initCrawler.crawl();
 
 			Integer counter = 0;
 
-			while (CrawlerApp.urlList.size() > 0 && counter < CrawlerApp.MAX_NUM_PAGES ) {
+			while (CrawlerApp.urlList.size() > 0 && counter < CrawlerApp.MAX_NUM_PAGES) {
 				String url = CrawlerApp.urlList.remove(0);
 				Crawler crawler = new Crawler(url);
 				crawler.crawl();
@@ -195,22 +217,11 @@ public class CrawlerApp {
 
 			System.out.println("End of crawling");
 
-			try {
-				Options options = new Options();
-				options.setCreateIfMissing(true);
-
-				RocksDB db;
-				db = RocksDB.open(options, dbPath);
-				System.out.println("Opened DB");
-
-
-
+			for(int i = 0; i < mapList.size(); i++) {
+				crawlerApp.db.put(mapList.get(i).getUrl().getBytes(), mapList.get(i).getWord_list().toString().getBytes());
 			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
-
-
+			System.out.println("added entry");
+			crawlerApp.printAll();
 		}
 		catch (Exception e) {
 			e.printStackTrace ();
