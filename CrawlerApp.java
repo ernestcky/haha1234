@@ -23,12 +23,16 @@ import org.htmlparser.beans.LinkBean;
 class UrlData {
 	private String url;
 	private LocalDateTime Date;
+	private Integer size;
 	private Map<String, Integer> word_list;
+	private Vector<String> child_link;
 
-	UrlData(String url, LocalDateTime Date, Map<String, Integer> word_list) {
+	UrlData(String url, LocalDateTime Date, Integer size, Map<String, Integer> word_list, Vector<String> child_link) {
 		this.url = url;
 		this.Date = Date;
+		this.size = size;
 		this.word_list = word_list;
+		this.child_link = child_link;
 	}
 
 	public String getUrl() {
@@ -43,8 +47,16 @@ class UrlData {
 		return this.Date;
 	}
 
+	public Integer getSize() {
+		return this.size;
+	}
+
+	public Vector<String> getChildLink() {
+		return this.child_link;
+	}
+
 	public void print() {
-		System.out.println("Url: " + this.getUrl() + "\nLastModificaiton Date: " + this.getDate() + "\nWord List: " + this.getWord_list());
+		System.out.println("Url: " + this.getUrl() + "\nLastModificaiton Date: " + this.getDate() + "\nSize: " + this.getSize() + "\nWord List: " + this.getWord_list() + "\nChild Link List: " + this.getChildLink());
 	}
 }
 
@@ -59,11 +71,13 @@ class Crawler {
 	public Map<String, Integer> extractWords() throws ParserException {
 		Vector<String> tempResult = new Vector<String>();
 		Map<String, Integer> result = new HashMap<String, Integer>();
+
 		StringBean bean = new StringBean();
 		bean.setURL(url);
 		bean.setLinks(false);
 		String contents = bean.getStrings();
 		StringTokenizer st = new StringTokenizer(contents);
+
 		while (st.hasMoreTokens()) {
 			tempResult.add(st.nextToken());
 		}
@@ -79,13 +93,10 @@ class Crawler {
 			}
 		}
 
-
 		return result;
 	}
 
 	public Vector<String> extractLinks() throws ParserException {
-		// extract links in url and return them
-		// ADD YOUR CODES HERE
 		Vector<String> result = new Vector<String>();
 		LinkBean bean = new LinkBean();
 		bean.setURL(url);
@@ -117,7 +128,7 @@ class Crawler {
 		return date;
 	}
 
-	public int getSize() throws Exception {
+	public Integer getSize() throws Exception {
 		StringBean bean = new StringBean();
 		bean.setURL(url);
 		bean.setLinks(false);
@@ -130,13 +141,19 @@ class Crawler {
 		try {
 			LocalDateTime date = this.getDate(new URL(url));
 			System.out.println("Date: " + date);
+
+			Integer size = this.getSize();
+
 			Map<String, Integer> words = this.extractWords();
-			CrawlerApp.mapList.add(new UrlData(url, date, words));
+//			CrawlerApp.mapList.add(new UrlData(url, date, size, words));
 
 			Vector<String> links = this.extractLinks();
 			for(int i = 0; i < links.size(); i++) {
 				CrawlerApp.urlList.add(links.get(i));
 			}
+
+			CrawlerApp.mapList.add(new UrlData(url, date, size, words, links));
+
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
@@ -159,21 +176,12 @@ public class CrawlerApp {
 			CrawlerApp.urlList = new Vector<String>();
 			Crawler initCrawler = new Crawler(args[0]);
 
-//			System.out.println("Crawling: " + args[0]);
-//			LocalDateTime date = Crawler.getDate(new URL(args[0]));
-//			System.out.println("Date: " + date);
 			initCrawler.crawl();
-
-//			Map<String, Integer> words = initCrawler.extractWords();
-
-//			CrawlerApp.mapList.add(new UrlData(args[0], date, words));
-//			CrawlerApp.urlList = initCrawler.extractLinks();
 
 			Integer counter = 0;
 
 			while (CrawlerApp.urlList.size() > 0 && counter < CrawlerApp.MAX_NUM_PAGES ) {
 				String url = CrawlerApp.urlList.remove(0);
-//				System.out.println("Crawling: " + url);
 				Crawler crawler = new Crawler(url);
 				crawler.crawl();
 				counter++;
