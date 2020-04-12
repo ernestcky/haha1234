@@ -7,28 +7,27 @@ Email:
 */
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URLConnection;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import org.htmlparser.beans.StringBean;
-
-
 import org.htmlparser.util.ParserException;
 import org.htmlparser.beans.LinkBean;
 
-import java.net.URL;
 
 
 
-class UrlWordListPair {
+
+class UrlData {
 	private String url;
+	private LocalDateTime Date;
 	private Map<String, Integer> word_list;
 
-
-	UrlWordListPair(String url, Map<String, Integer> word_list) {
+	UrlData(String url, LocalDateTime Date, Map<String, Integer> word_list) {
 		this.url = url;
+		this.Date = Date;
 		this.word_list = word_list;
 	}
 
@@ -40,8 +39,12 @@ class UrlWordListPair {
 		return this.word_list;
 	}
 
+	public LocalDateTime getDate() {
+		return this.Date;
+	}
+
 	public void print() {
-		System.out.println("Url: " + this.getUrl() + "\nWord List: " + this.getWord_list());
+		System.out.println("Url: " + this.getUrl() + "\nLastModificaiton Date: " + this.getDate() + "\nWord List: " + this.getWord_list());
 	}
 }
 
@@ -93,31 +96,7 @@ class Crawler {
 		return result;
 	}
 
-	public void crawl() {
-		try {
-//			System.out.println("Crawling: " + url);
-			Map<String, Integer> words = this.extractWords();
-			CrawlerApp.mapList.add(new UrlWordListPair(url, words));
-
-			Vector<String> links = this.extractLinks();
-			for(int i = 0; i < links.size(); i++) {
-				CrawlerApp.urlList.add(links.get(i));
-			}
-		}
-		catch (Exception ex) {
-			ex.printStackTrace();
-		}
-	}
-
-}
-
-public class CrawlerApp {
-
-	static public Integer MAX_NUM_PAGES = 29;
-	static public Vector<UrlWordListPair> mapList;
-	static public Vector<String> urlList;
-
-	private static LocalDateTime getDate(URL url) throws Exception {
+	public static LocalDateTime getDate(URL url) throws Exception {
 		HttpURLConnection connection = (HttpURLConnection)url.openConnection();
 		connection.setRequestMethod("HEAD");
 		LocalDateTime date = null;
@@ -138,27 +117,63 @@ public class CrawlerApp {
 		return date;
 	}
 
+	public int getSize() throws Exception {
+		StringBean bean = new StringBean();
+		bean.setURL(url);
+		bean.setLinks(false);
+		String contents = bean.getStrings();
+		return contents.length();
+	}
+
+	public void crawl() {
+		System.out.println("Crawling: " + url);
+		try {
+			LocalDateTime date = this.getDate(new URL(url));
+			System.out.println("Date: " + date);
+			Map<String, Integer> words = this.extractWords();
+			CrawlerApp.mapList.add(new UrlData(url, date, words));
+
+			Vector<String> links = this.extractLinks();
+			for(int i = 0; i < links.size(); i++) {
+				CrawlerApp.urlList.add(links.get(i));
+			}
+		}
+		catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+
+}
+
+public class CrawlerApp {
+
+	static public Integer MAX_NUM_PAGES = 29;
+	static public Vector<UrlData> mapList;
+	static public Vector<String> urlList;
+
 	public static void main (String[] args) {
 		try {
 			System.out.println("Number of pages to be crawled: " + (CrawlerApp.MAX_NUM_PAGES + 1));
 
-			CrawlerApp.mapList = new Vector<UrlWordListPair>();
+			CrawlerApp.mapList = new Vector<UrlData>();
+			CrawlerApp.urlList = new Vector<String>();
 			Crawler initCrawler = new Crawler(args[0]);
 
-			System.out.println("Crawling: " + args[0]);
-			System.out.println("Date: " + getDate(new URL(args[0])));
+//			System.out.println("Crawling: " + args[0]);
+//			LocalDateTime date = Crawler.getDate(new URL(args[0]));
+//			System.out.println("Date: " + date);
+			initCrawler.crawl();
 
-			Map<String, Integer> words = initCrawler.extractWords();
+//			Map<String, Integer> words = initCrawler.extractWords();
 
-			CrawlerApp.mapList.add(new UrlWordListPair(args[0], words));
-			CrawlerApp.urlList = initCrawler.extractLinks();
+//			CrawlerApp.mapList.add(new UrlData(args[0], date, words));
+//			CrawlerApp.urlList = initCrawler.extractLinks();
 
 			Integer counter = 0;
 
 			while (CrawlerApp.urlList.size() > 0 && counter < CrawlerApp.MAX_NUM_PAGES ) {
 				String url = CrawlerApp.urlList.remove(0);
-				System.out.println("Crawling: " + url);
-				System.out.println("Date: " + getDate(new URL(url)));
+//				System.out.println("Crawling: " + url);
 				Crawler crawler = new Crawler(url);
 				crawler.crawl();
 				counter++;
@@ -170,10 +185,8 @@ public class CrawlerApp {
 				CrawlerApp.mapList.get(i).print();
 			}
 		}
-		catch (ParserException | MalformedURLException e) {
+		catch (Exception e) {
 			e.printStackTrace ();
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 }
