@@ -5,16 +5,25 @@ Student ID:
 Section:
 Email:
 */
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import org.htmlparser.Node;
+import org.htmlparser.Parser;
 import org.htmlparser.beans.StringBean;
+import org.htmlparser.filters.AndFilter;
+import org.htmlparser.nodes.TagNode;
+import org.htmlparser.tags.TitleTag;
+import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
 import org.htmlparser.beans.LinkBean;
+import org.htmlparser.visitors.HtmlPage;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
@@ -23,13 +32,15 @@ import org.rocksdb.RocksIterator;
 
 class UrlData {
 	private String url;
+	private String pageTitle;
 	private LocalDateTime Date;
 	private Integer size;
 	private Map<String, Integer> word_list;
 	private Vector<String> child_link;
 
-	UrlData(String url, LocalDateTime Date, Integer size, Map<String, Integer> word_list, Vector<String> child_link) {
+	UrlData(String url, String pageTitle, LocalDateTime Date, Integer size, Map<String, Integer> word_list, Vector<String> child_link) {
 		this.url = url;
+		this.pageTitle = pageTitle;
 		this.Date = Date;
 		this.size = size;
 		this.word_list = word_list;
@@ -39,6 +50,8 @@ class UrlData {
 	public String getUrl() {
 		return this.url;
 	}
+
+	public String getPageTitle() { return this.pageTitle; }
 
 	public Map<String, Integer> getWord_list() {
 		return this.word_list;
@@ -135,9 +148,25 @@ class Crawler {
 		return contents.length();
 	}
 
+	public String getTitle(String url) throws ParserException {
+		Parser parser = new Parser();
+		parser.setResource(url);
+		TagNode tnode = new TagNode();
+		tnode.setChildren(parser.extractAllNodesThatMatch(new AndFilter()));
+		for (Node n: tnode.getChildren().toNodeArray()) {
+			if (n instanceof TitleTag) {
+				return ((TitleTag)n).getTitle();
+			}
+		}
+		return null;
+	}
+
 	public void crawl() {
 		System.out.println("Crawling: " + url);
 		try {
+			String title = this.getTitle(url);
+			System.out.println("Title: " + title);
+
 			LocalDateTime date = this.getDate(new URL(url));
 			System.out.println("Date: " + date);
 
@@ -152,7 +181,7 @@ class Crawler {
 					CrawlerApp.urlList.add(links.get(i));
 			}
 
-			CrawlerApp.mapList.add(new UrlData(url, date, size, words, links));
+			CrawlerApp.mapList.add(new UrlData(url, title, date, size, words, links));
 
 		}
 		catch (Exception ex) {
@@ -190,7 +219,7 @@ public class CrawlerApp {
 	public static void main (String[] args) {
 
 		try {
-			String dbPath = "/home/ernest/Documents/COMP4321/Phase1/db";
+			String dbPath = "/home/ernest/Documents/COMP4321/lab2_new/db";
 
 			CrawlerApp crawlerApp = new CrawlerApp(dbPath);
 
@@ -218,7 +247,15 @@ public class CrawlerApp {
 			System.out.println("End of crawling");
 
 			for(int i = 0; i < mapList.size(); i++) {
-				crawlerApp.db.put(mapList.get(i).getUrl().getBytes(), mapList.get(i).getWord_list().toString().getBytes());
+				crawlerApp.db.put(mapList.get(i).getUrl().getBytes(), ("Doc"+new Integer(i).toString()).getBytes());
+				StringBuilder data = new StringBuilder();
+				data.append("#PageTitle#: " + mapList.get(i).getPageTitle());
+				data.append("#LastModificationDate#: " + mapList.get(i).getDate().toString());
+				data.append("#Size#: " + mapList.get(i).getSize());
+				data.append("#WordList#: " + mapList.get(i).getWord_list().toString());
+				data.append("#ChildLinkList#: " + mapList.get(i).getChildLink().toString());
+				System.out.println(data.toString());
+				crawlerApp.db.put(("Doc"+new Integer(i).toString()).getBytes(), data.toString().getBytes());
 			}
 			System.out.println("added entry");
 			crawlerApp.printAll();
