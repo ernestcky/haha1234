@@ -254,11 +254,21 @@ public class CrawlerApp {
 				data.append("#Size#: " + mapList.get(i).getSize());
 				data.append("#WordList#: " + mapList.get(i).getWord_list().toString());
 				data.append("#ChildLinkList#: " + mapList.get(i).getChildLink().toString());
-				System.out.println(data.toString());
+//				System.out.println(data.toString());
 				crawlerApp.db.put(("Doc"+new Integer(i).toString()).getBytes(), data.toString().getBytes());
 			}
 			System.out.println("added entry");
+
 			crawlerApp.printAll();
+
+			// Pass the URL, return the DocId
+			String docId = new String(crawlerApp.db.get("http://www.cse.ust.hk".getBytes()));
+			System.out.println(docId);
+
+			// Pass the DocId, return the detail of the doc (e.g. PageTitle, WordList, Size, etc...)
+			String detail = new String(crawlerApp.db.get(docId.getBytes()));
+			System.out.println(detail);
+
 		}
 		catch (Exception e) {
 			e.printStackTrace ();
